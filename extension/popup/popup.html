@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>メニューシミュレーター</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <h1>メニューシミュレーター</h1>
+      <span class="version">v1.0.0</span>
+    </header>
+
+    <!-- Extension ID (for debugging) -->
+    <div class="section">
+      <label class="section-label">拡張機能ID</label>
+      <div class="id-display">
+        <code id="extensionId">読み込み中...</code>
+        <button id="btnCopyId" class="btn-icon" title="コピー">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Connection Status -->
+    <div class="section">
+      <label class="section-label">接続状態</label>
+      <div id="connectionStatus" class="status-bar status--pending">
+        <span class="status-icon">⏳</span>
+        <span class="status-text">Webアプリからの接続を待機中</span>
+      </div>
+    </div>
+
+    <!-- Last Connected -->
+    <div class="section">
+      <label class="section-label">最終接続</label>
+      <div id="lastConnected" class="info-text">--</div>
+    </div>
+
+    <!-- Current Page Info -->
+    <div class="section">
+      <label class="section-label">現在のページ</label>
+      <div id="pageInfo" class="page-info">
+        <div class="page-info__url">--</div>
+        <div id="platformBadge" class="platform-badge hidden"></div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="section">
+      <button id="btnRefresh" class="btn btn-secondary">
+        状態を更新
+      </button>
+      <button id="btnOpenWebApp" class="btn btn-primary">
+        Webアプリを開く
+      </button>
+    </div>
+
+    <!-- Self-Healing Test Section -->
+    <div class="section self-healing-section">
+      <label class="section-label">🔧 セルフヒーリング テスト</label>
+      <p class="section-desc">Gmailで検索を実行してセレクタ検証をテスト</p>
+      <div class="self-healing-test">
+        <input type="text" id="healingSearchQuery" placeholder="Gmail検索キーワード" value="Anthropic">
+        <button id="btnHealingTest" class="btn btn-accent">
+          テスト実行
+        </button>
+        <div id="healingTestResult" class="mcp-result hidden"></div>
+        <div id="healingValidation" class="validation-result hidden">
+          <div class="validation-row">
+            <span class="validation-label">Logic Check:</span>
+            <span id="logicCheckResult" class="validation-value">-</span>
+          </div>
+          <div class="validation-row">
+            <span class="validation-label">AI Check:</span>
+            <span id="aiCheckResult" class="validation-value">-</span>
+          </div>
+          <div class="validation-row">
+            <span class="validation-label">セレクタ:</span>
+            <span id="selectorUsed" class="validation-value">-</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MCP Test Section (HTTP Bridge) -->
+    <div class="section">
+      <label class="section-label">MCP ブリッジテスト (HTTP)</label>
+      <div class="mcp-test">
+        <input type="text" id="mcpSearchQuery" placeholder="検索キーワード" value="Menu Simulator テスト">
+        <button id="btnMcpTest" class="btn btn-accent">
+          Google検索実行
+        </button>
+        <div id="mcpTestResult" class="mcp-result hidden"></div>
+      </div>
+    </div>
+
+    <!-- Native Messaging MCP Section -->
+    <div class="section">
+      <label class="section-label">Native MCP (ローカル接続)</label>
+      <div class="native-mcp">
+        <div id="nativeMcpStatus" class="status-bar status--disconnected">
+          <span class="status-icon">⚫</span>
+          <span class="status-text">未接続</span>
+        </div>
+        <div class="native-mcp__buttons">
+          <button id="btnNativeConnect" class="btn btn-secondary">
+            接続
+          </button>
+          <button id="btnNativeListTools" class="btn btn-secondary" disabled>
+            ツール一覧
+          </button>
+        </div>
+        <div class="native-mcp__test">
+          <select id="nativeToolSelect" disabled>
+            <option value="">ツールを選択...</option>
+          </select>
+          <button id="btnNativeCallTool" class="btn btn-accent" disabled>
+            実行
+          </button>
+        </div>
+        <div id="nativeMcpResult" class="mcp-result hidden"></div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="popup-footer">
+      <a href="#" id="btnHelp">ヘルプ</a>
+    </footer>
+  </div>
+
+  <script src="../lib/native-mcp-client.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
