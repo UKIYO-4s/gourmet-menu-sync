@@ -325,9 +325,9 @@ async function validateAndHeal(req: ValidateRequest, env: Env): Promise<Validate
         }
       }
 
-      // Update KV with healed selectors if successful
-      if (missingElements.length === 0) {
-        await updateSelectorsInKV(env, req.site, selectors, healResult.healedSelectors);
+      // Update KV with healed selectors (even if partial success)
+      if (healResult.healedSelectors.length > 0) {
+        await updateSelectorsInKV(env, req.site, req.page, healResult.healedSelectors);
         kvUpdated = true;
       }
     } else {
@@ -349,10 +349,40 @@ async function validateAndHeal(req: ValidateRequest, env: Env): Promise<Validate
 
   // Generate commands based on action (ALWAYS generate if action provided)
   let commands = req.action ? generateCommands(req.action, matchedElements) : undefined;
+  let usedFallback = false;
 
   // Fallback: If no commands generated but action exists, use best-effort commands
   if (req.action && (!commands || commands.length === 0)) {
     commands = generateBestEffortCommands(req.action);
+    usedFallback = true;
+
+    // When using fallback, verify which selectors work and save to KV
+    if (commands.length > 0) {
+      const verifiedSelectors: { id: string; oldSelector?: string; newSelector: string }[] = [];
+
+      for (const cmd of commands) {
+        if (cmd.tool === 'fill_form' && typeof cmd.args.selector === 'string') {
+          // Try each selector in the comma-separated list
+          const selectors = cmd.args.selector.split(',').map((s: string) => s.trim());
+          for (const sel of selectors) {
+            if (document.querySelector(sel)) {
+              verifiedSelectors.push({
+                id: 'search_input',
+                oldSelector: missingElements.find(m => m.id === 'search_input')?.expected_selector,
+                newSelector: sel
+              });
+              break;
+            }
+          }
+        }
+      }
+
+      // Save verified selectors to KV
+      if (verifiedSelectors.length > 0) {
+        await updateSelectorsInKV(env, req.site, req.page, verifiedSelectors);
+        kvUpdated = true;
+      }
+    }
   }
 
   const isSuccess = missingElements.length === 0;
@@ -367,9 +397,6 @@ async function validateAndHeal(req: ValidateRequest, env: Env): Promise<Validate
   const primaryElement = matchedElements.find(e =>
     e.id === 'search_input' || e.id === 'menu_name' || e.id.includes('input')
   );
-
-  // Determine if fallback was used
-  const usedFallback = commands && commands.length > 0 && matchedElements.length === 0;
 
   return {
     task_completed: commands !== undefined && commands.length > 0, // Task can complete if commands exist
@@ -554,23 +581,38 @@ JSONのみ出力:`;
 async function updateSelectorsInKV(
   env: Env,
   site: string,
-  currentSelectors: SelectorDefinition,
-  healedSelectors: { id: string; newSelector: string }[]
+  page: string,
+  healedSelectors: { id: string; oldSelector?: string; newSelector: string }[]
 ): Promise<void> {
-  // Create updated selectors
-  const updated = { ...currentSelectors };
+  // Get current selectors from KV
+  const currentSelectors = await getSelectors(env, site);
+  const updated = JSON.parse(JSON.stringify(currentSelectors)); // Deep clone
 
-  for (const page of Object.values(updated.pages)) {
-    for (const element of page.required_elements) {
-      const healed = healedSelectors.find(h => h.id === element.id);
-      if (healed) {
-        // Add old selector to alternatives
-        if (!element.alternatives.includes(element.selector)) {
-          element.alternatives.unshift(element.selector);
-        }
-        // Update main selector
-        element.selector = healed.newSelector;
+  // Ensure page exists
+  if (!updated.pages[page]) {
+    updated.pages[page] = { required_elements: [] };
+  }
+
+  const pageConfig = updated.pages[page];
+
+  for (const healed of healedSelectors) {
+    // Find existing element or create new one
+    let element = pageConfig.required_elements.find((e: { id: string }) => e.id === healed.id);
+
+    if (element) {
+      // Add old selector to alternatives if exists
+      if (healed.oldSelector && !element.alternatives.includes(healed.oldSelector)) {
+        element.alternatives.unshift(healed.oldSelector);
       }
+      // Update main selector
+      element.selector = healed.newSelector;
+    } else {
+      // Create new element entry
+      pageConfig.required_elements.push({
+        id: healed.id,
+        selector: healed.newSelector,
+        alternatives: healed.oldSelector ? [healed.oldSelector] : []
+      });
     }
   }
 
