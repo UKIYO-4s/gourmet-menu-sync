@@ -2,6 +2,34 @@
  * Popup Script - Menu Simulator Assistant
  */
 
+// === Helper Functions ===
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function withButtonLoading(button, loadingText, action) {
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = loadingText;
+  try {
+    return await action();
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+function createStatusBar(statusBar, statusClass, icon, text) {
+  statusBar.classList.remove('status--pending', 'status--connected', 'status--error', 'status--disconnected', 'status--connecting');
+  statusBar.classList.add(statusClass);
+  statusBar.innerHTML = `<span class="status-icon">${icon}</span><span class="status-text">${text}</span>`;
+}
+
+function showResult(element, type, message) {
+  if (!element) return;
+  element.className = `mcp-result ${type}`;
+  element.textContent = message;
+  element.classList.remove('hidden');
+}
+
 // DOM Elements
 const elements = {
   extensionId: document.getElementById('extensionId'),
@@ -108,34 +136,15 @@ async function refreshState() {
 /**
  * Update connection status display
  */
+const CONNECTION_STATUS_CONFIG = {
+  connected: { class: 'status--connected', icon: '✅', text: 'Webアプリと接続済み' },
+  error: { class: 'status--error', icon: '❌', text: 'エラーが発生しました' },
+  pending: { class: 'status--pending', icon: '⏳', text: 'Webアプリからの接続を待機中' }
+};
+
 function updateConnectionStatus(status) {
-  const statusBar = elements.connectionStatus;
-
-  statusBar.classList.remove('status--pending', 'status--connected', 'status--error');
-
-  switch (status) {
-    case 'connected':
-      statusBar.classList.add('status--connected');
-      statusBar.innerHTML = `
-        <span class="status-icon">✅</span>
-        <span class="status-text">Webアプリと接続済み</span>
-      `;
-      break;
-    case 'error':
-      statusBar.classList.add('status--error');
-      statusBar.innerHTML = `
-        <span class="status-icon">❌</span>
-        <span class="status-text">エラーが発生しました</span>
-      `;
-      break;
-    case 'pending':
-    default:
-      statusBar.classList.add('status--pending');
-      statusBar.innerHTML = `
-        <span class="status-icon">⏳</span>
-        <span class="status-text">Webアプリからの接続を待機中</span>
-      `;
-  }
+  const config = CONNECTION_STATUS_CONFIG[status] || CONNECTION_STATUS_CONFIG.pending;
+  createStatusBar(elements.connectionStatus, config.class, config.icon, config.text);
 }
 
 /**
@@ -267,14 +276,13 @@ async function executeCloudflareAction(action) {
       // navigate はタブAPIで直接実行
       if (cmd.tool === 'navigate') {
         await chrome.tabs.update(currentTabId, { url: cmd.args.url });
-        // ページ読み込み待機
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await sleep(2000);
         continue;
       }
 
       // wait はここで待機
       if (cmd.tool === 'wait') {
-        await new Promise(resolve => setTimeout(resolve, cmd.args.seconds * 1000));
+        await sleep(cmd.args.seconds * 1000);
         continue;
       }
 
@@ -292,7 +300,7 @@ async function executeCloudflareAction(action) {
           files: ['content/command-executor.js']
         });
         // 再試行
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await sleep(500);
         await chrome.tabs.sendMessage(currentTabId, {
           action: 'EXECUTE_SINGLE_COMMAND',
           command: cmd
@@ -345,25 +353,6 @@ async function runMcpTest() {
     elements.mcpTestResult.className = 'mcp-result error';
     elements.mcpTestResult.textContent = `❌ エラー: ${result.error}`;
     showToast('実行失敗');
-  }
-}
-
-/**
- * Toggle between local and cloudflare mode
- */
-function toggleMode() {
-  currentMode = currentMode === 'local' ? 'cloudflare' : 'local';
-  updateModeDisplay();
-  showToast(`モード: ${currentMode === 'cloudflare' ? 'Cloudflare' : 'ローカル'}`);
-}
-
-/**
- * Update mode display
- */
-function updateModeDisplay() {
-  const modeBtn = document.getElementById('btnToggleMode');
-  if (modeBtn) {
-    modeBtn.textContent = currentMode === 'cloudflare' ? '☁️ Cloudflare' : '💻 ローカル';
   }
 }
 
@@ -479,7 +468,7 @@ async function runSelfHealingTest() {
       }
 
       // Wait for script to load
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await sleep(300);
 
       // Execute commands
       for (const cmd of result.commands) {
@@ -488,7 +477,7 @@ async function runSelfHealingTest() {
             action: 'EXECUTE_SINGLE_COMMAND',
             command: cmd
           });
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await sleep(200);
         } catch (e) {
           console.error('Command execution error:', e);
         }
@@ -518,11 +507,7 @@ async function runSelfHealingTest() {
  * Show healing test result
  */
 function showHealingResult(type, message) {
-  if (elements.healingTestResult) {
-    elements.healingTestResult.className = `mcp-result ${type}`;
-    elements.healingTestResult.textContent = message;
-    elements.healingTestResult.classList.remove('hidden');
-  }
+  showResult(elements.healingTestResult, type, message);
 }
 
 /**
@@ -565,41 +550,16 @@ function showValidationResults(result) {
 /**
  * Update Native MCP status display
  */
+const NATIVE_MCP_STATUS_CONFIG = {
+  connected: { class: 'status--connected', icon: '🟢', text: 'MCP接続済み' },
+  connecting: { class: 'status--connecting', icon: '🟡', text: '接続中...' },
+  error: { class: 'status--error', icon: '🔴', text: 'エラー' },
+  disconnected: { class: 'status--disconnected', icon: '⚫', text: '未接続' }
+};
+
 function updateNativeMcpStatus(status, message) {
-  const statusBar = elements.nativeMcpStatus;
-
-  statusBar.classList.remove('status--disconnected', 'status--connected', 'status--connecting', 'status--error');
-
-  switch (status) {
-    case 'connected':
-      statusBar.classList.add('status--connected');
-      statusBar.innerHTML = `
-        <span class="status-icon">🟢</span>
-        <span class="status-text">${message || 'MCP接続済み'}</span>
-      `;
-      break;
-    case 'connecting':
-      statusBar.classList.add('status--connecting');
-      statusBar.innerHTML = `
-        <span class="status-icon">🟡</span>
-        <span class="status-text">${message || '接続中...'}</span>
-      `;
-      break;
-    case 'error':
-      statusBar.classList.add('status--error');
-      statusBar.innerHTML = `
-        <span class="status-icon">🔴</span>
-        <span class="status-text">${message || 'エラー'}</span>
-      `;
-      break;
-    case 'disconnected':
-    default:
-      statusBar.classList.add('status--disconnected');
-      statusBar.innerHTML = `
-        <span class="status-icon">⚫</span>
-        <span class="status-text">${message || '未接続'}</span>
-      `;
-  }
+  const config = NATIVE_MCP_STATUS_CONFIG[status] || NATIVE_MCP_STATUS_CONFIG.disconnected;
+  createStatusBar(elements.nativeMcpStatus, config.class, config.icon, message || config.text);
 }
 
 /**
@@ -768,9 +728,7 @@ async function callNativeTool() {
  * Show Native MCP result
  */
 function showNativeMcpResult(type, message) {
-  elements.nativeMcpResult.className = `mcp-result ${type}`;
-  elements.nativeMcpResult.textContent = message;
-  elements.nativeMcpResult.classList.remove('hidden');
+  showResult(elements.nativeMcpResult, type, message);
 }
 
 // Initialize when DOM is ready

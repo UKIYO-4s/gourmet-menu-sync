@@ -145,25 +145,28 @@ const defaultSelectors: Record<string, SelectorDefinition> = {
   }
 };
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+function jsonResponse(data: unknown, status = 200): Response {
+  return Response.json(data, { status, headers: CORS_HEADERS });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
+    const { pathname, searchParams } = new URL(request.url);
+    const method = request.method;
 
-    // CORS headers
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    };
-
-    // Handle CORS preflight
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
+    if (method === 'OPTIONS') {
+      return new Response(null, { headers: CORS_HEADERS });
     }
 
     // Root path - API info
-    if (url.pathname === '/' || url.pathname === '') {
-      return Response.json({
+    if (pathname === '/' || pathname === '') {
+      return jsonResponse({
         name: 'Gourmet Selector Validator API',
         version: '1.0.0',
         description: 'DOM検証 + セルフヒーリング セレクタシステム',
@@ -175,60 +178,50 @@ export default {
         },
         supported_sites: ['tabelog', 'hotpepper', 'gurunavi'],
         status: 'running'
-      }, { headers: corsHeaders });
+      });
     }
 
-    // Health check
-    if (url.pathname === '/health') {
-      return Response.json({ status: 'ok', timestamp: new Date().toISOString() }, { headers: corsHeaders });
+    if (pathname === '/health') {
+      return jsonResponse({ status: 'ok', timestamp: new Date().toISOString() });
     }
 
-    // Get selectors endpoint
-    if (url.pathname === '/selectors' && request.method === 'GET') {
-      const site = url.searchParams.get('site');
-      if (!site) {
-        return Response.json({ error: 'site parameter required' }, { status: 400, headers: corsHeaders });
+    if (pathname === '/selectors') {
+      if (method === 'GET') {
+        const site = searchParams.get('site');
+        if (!site) {
+          return jsonResponse({ error: 'site parameter required' }, 400);
+        }
+        return jsonResponse(await getSelectors(env, site));
       }
 
-      const selectors = await getSelectors(env, site);
-      return Response.json(selectors, { headers: corsHeaders });
+      if (method === 'POST') {
+        try {
+          const { site, selectors } = await request.json() as { site: string; selectors: SelectorDefinition };
+          await env.SELECTORS.put(`selectors:${site}`, JSON.stringify(selectors));
+          return jsonResponse({ success: true });
+        } catch (error) {
+          return jsonResponse({ error: String(error) }, 400);
+        }
+      }
     }
 
-    // Validate endpoint
-    if (url.pathname === '/validate' && request.method === 'POST') {
+    if (pathname === '/validate' && method === 'POST') {
       try {
         const body = await request.json() as ValidateRequest;
-        const result = await validateAndHeal(body, env);
-        return Response.json(result, { headers: corsHeaders });
+        return jsonResponse(await validateAndHeal(body, env));
       } catch (error) {
-        return Response.json(
-          { status: 'ERROR', error_type: 'PARSE_ERROR', message: String(error) },
-          { status: 400, headers: corsHeaders }
-        );
+        return jsonResponse({ status: 'ERROR', error_type: 'PARSE_ERROR', message: String(error) }, 400);
       }
     }
 
-    // Update selectors endpoint (for manual updates)
-    if (url.pathname === '/selectors' && request.method === 'POST') {
-      try {
-        const body = await request.json() as { site: string; selectors: SelectorDefinition };
-        await env.SELECTORS.put(`selectors:${body.site}`, JSON.stringify(body.selectors));
-        return Response.json({ success: true }, { headers: corsHeaders });
-      } catch (error) {
-        return Response.json({ error: String(error) }, { status: 400, headers: corsHeaders });
-      }
-    }
-
-    return Response.json({ error: 'Not Found' }, { status: 404, headers: corsHeaders });
+    return jsonResponse({ error: 'Not Found' }, 404);
   }
 };
 
 async function getSelectors(env: Env, site: string): Promise<SelectorDefinition> {
-  const stored = await env.SELECTORS.get(`selectors:${site}`, 'json') as SelectorDefinition | null;
-  if (stored) {
-    return stored;
-  }
-  return defaultSelectors[site] || defaultSelectors.tabelog;
+  return await env.SELECTORS.get(`selectors:${site}`, 'json') as SelectorDefinition
+    ?? defaultSelectors[site]
+    ?? defaultSelectors.tabelog;
 }
 
 async function validateAndHeal(req: ValidateRequest, env: Env): Promise<ValidateResponse> {
@@ -355,7 +348,7 @@ async function validateAndHeal(req: ValidateRequest, env: Env): Promise<Validate
   }
 
   // Generate commands based on action (ALWAYS generate if action provided)
-  let commands = req.action ? generateCommands(req.action, matchedElements, pageConfig) : undefined;
+  let commands = req.action ? generateCommands(req.action, matchedElements) : undefined;
 
   // Fallback: If no commands generated but action exists, use best-effort commands
   if (req.action && (!commands || commands.length === 0)) {
@@ -406,45 +399,34 @@ async function validateAndHeal(req: ValidateRequest, env: Env): Promise<Validate
 }
 
 // Generate commands based on action type and matched elements
-function generateCommands(action: ActionRequest, matchedElements: MatchedElement[], pageConfig: { required_elements: ElementDefinition[] }): Command[] {
+function generateCommands(action: ActionRequest, matchedElements: MatchedElement[]): Command[] {
   const commands: Command[] = [];
+  const findElement = (predicate: (e: MatchedElement) => boolean) => matchedElements.find(predicate);
 
   switch (action.type) {
     case 'search': {
-      const inputElement = matchedElements.find(e => e.id === 'search_input' || e.id.includes('input'));
+      const inputElement = findElement(e => e.id === 'search_input' || e.id.includes('input'));
       if (inputElement && action.keyword) {
-        commands.push({
-          tool: 'fill_form',
-          args: { selector: inputElement.selector, value: action.keyword }
-        });
-        commands.push({
-          tool: 'press_key',
-          args: { key: 'Enter' }
-        });
+        commands.push(
+          { tool: 'fill_form', args: { selector: inputElement.selector, value: action.keyword } },
+          { tool: 'press_key', args: { key: 'Enter' } }
+        );
       }
       break;
     }
     case 'fill': {
-      if (action.data) {
-        for (const [fieldId, value] of Object.entries(action.data)) {
-          const element = matchedElements.find(e => e.id === fieldId);
-          if (element) {
-            commands.push({
-              tool: 'fill_form',
-              args: { selector: element.selector, value }
-            });
-          }
+      Object.entries(action.data ?? {}).forEach(([fieldId, value]) => {
+        const element = findElement(e => e.id === fieldId);
+        if (element) {
+          commands.push({ tool: 'fill_form', args: { selector: element.selector, value } });
         }
-      }
+      });
       break;
     }
     case 'click': {
-      const targetElement = matchedElements.find(e => e.id === action.target || e.id.includes('button'));
+      const targetElement = findElement(e => e.id === action.target || e.id.includes('button'));
       if (targetElement) {
-        commands.push({
-          tool: 'click',
-          args: { selector: targetElement.selector }
-        });
+        commands.push({ tool: 'click', args: { selector: targetElement.selector } });
       }
       break;
     }
@@ -455,25 +437,24 @@ function generateCommands(action: ActionRequest, matchedElements: MatchedElement
 
 // Generate best-effort commands when page config not found
 function generateBestEffortCommands(action: ActionRequest): Command[] {
-  const commands: Command[] = [];
-
-  switch (action.type) {
-    case 'search':
-      if (action.keyword) {
-        // Try common search selectors
-        commands.push({
-          tool: 'fill_form',
-          args: { selector: 'input[type="search"], input[name="q"], input[aria-label*="検索"]', value: action.keyword }
-        });
-        commands.push({
-          tool: 'press_key',
-          args: { key: 'Enter' }
-        });
-      }
-      break;
+  if (action.type === 'search' && action.keyword) {
+    return [
+      { tool: 'fill_form', args: { selector: 'input[type="search"], input[name="q"], input[aria-label*="検索"]', value: action.keyword } },
+      { tool: 'press_key', args: { key: 'Enter' } }
+    ];
   }
+  return [];
+}
 
-  return commands;
+// Helper to extract AI response text
+function extractAIResponseText(response: unknown): string {
+  return typeof response === 'string' ? response : (response as { response: string }).response;
+}
+
+// Helper to parse JSON from AI response
+function parseJSONFromResponse<T>(text: string): T | null {
+  const match = text.match(/\{[\s\S]*\}/);
+  return match ? JSON.parse(match[0]) : null;
 }
 
 // AI confirmation for found elements
@@ -483,42 +464,32 @@ async function confirmWithAI(
   matchedElements: MatchedElement[],
   env: Env
 ): Promise<{ confirmed: boolean; confidence: number; analysis: string }> {
-  try {
-    const truncatedHtml = html.substring(0, 10000);
+  const defaultResult = { confirmed: true, confidence: 0.7, analysis: 'AI確認スキップ（エラー）' };
 
+  try {
     const prompt = `あなたはHTML解析の専門家です。以下の${site}サイトで、指定されたセレクタが正しい要素を指しているか確認してください。
 
 見つかった要素:
 ${matchedElements.map(e => `- ${e.id}: "${e.selector}"`).join('\n')}
 
 HTML (一部):
-${truncatedHtml}
+${html.substring(0, 10000)}
 
 以下のJSON形式のみで回答:
 {"confirmed": true/false, "confidence": 0.0-1.0, "analysis": "日本語で簡潔に"}
 
 JSONのみ出力:`;
 
-    const response = await env.AI.run('@cf/meta/llama-3-8b-instruct', {
-      prompt,
-      max_tokens: 200
-    });
+    const response = await env.AI.run('@cf/meta/llama-3-8b-instruct', { prompt, max_tokens: 200 });
+    const parsed = parseJSONFromResponse<{ confirmed?: boolean; confidence?: number; analysis?: string }>(
+      extractAIResponseText(response)
+    );
 
-    const responseText = typeof response === 'string' ? response : (response as { response: string }).response;
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      return {
-        confirmed: parsed.confirmed ?? true,
-        confidence: parsed.confidence ?? 0.9,
-        analysis: parsed.analysis ?? '確認完了'
-      };
-    }
-
-    return { confirmed: true, confidence: 0.8, analysis: 'AI確認完了（パース警告）' };
+    return parsed
+      ? { confirmed: parsed.confirmed ?? true, confidence: parsed.confidence ?? 0.9, analysis: parsed.analysis ?? '確認完了' }
+      : { confirmed: true, confidence: 0.8, analysis: 'AI確認完了（パース警告）' };
   } catch {
-    return { confirmed: true, confidence: 0.7, analysis: 'AI確認スキップ（エラー）' };
+    return defaultResult;
   }
 }
 
@@ -534,17 +505,16 @@ async function attemptAIHealing(
   missingElements: { id: string; expected_selector: string }[],
   env: Env
 ): Promise<HealResult> {
-  try {
-    // Truncate HTML to fit within token limits
-    const truncatedHtml = html.substring(0, 15000);
+  const failResult = (analysis: string): HealResult => ({ success: false, healedSelectors: [], analysis });
 
+  try {
     const prompt = `あなたはHTML解析の専門家です。以下の${site}サイトのHTMLから、指定された要素のCSSセレクタを提案してください。
 
 探している要素:
 ${missingElements.map(e => `- ${e.id}: 以前は "${e.expected_selector}" でしたが見つかりません`).join('\n')}
 
 HTML (一部):
-${truncatedHtml}
+${html.substring(0, 15000)}
 
 以下のJSON形式のみで回答してください:
 {
@@ -556,48 +526,28 @@ ${truncatedHtml}
 
 JSONのみ出力:`;
 
-    const response = await env.AI.run('@cf/meta/llama-3-8b-instruct', {
-      prompt,
-      max_tokens: 500
-    });
-
-    // Parse AI response
-    const responseText = typeof response === 'string' ? response : (response as { response: string }).response;
-
-    // Extract JSON from response
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return { success: false, healedSelectors: [], analysis: 'AI response did not contain valid JSON' };
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]) as {
+    const response = await env.AI.run('@cf/meta/llama-3-8b-instruct', { prompt, max_tokens: 500 });
+    const parsed = parseJSONFromResponse<{
       selectors: { id: string; selector: string; confidence: number }[];
       analysis: string;
-    };
+    }>(extractAIResponseText(response));
+
+    if (!parsed) {
+      return failResult('AI response did not contain valid JSON');
+    }
 
     const healedSelectors = parsed.selectors
       .filter(s => s.confidence >= 0.7)
-      .map(s => {
-        const original = missingElements.find(m => m.id === s.id);
-        return {
-          id: s.id,
-          oldSelector: original?.expected_selector || '',
-          newSelector: s.selector
-        };
-      });
+      .map(s => ({
+        id: s.id,
+        oldSelector: missingElements.find(m => m.id === s.id)?.expected_selector ?? '',
+        newSelector: s.selector
+      }));
 
-    return {
-      success: healedSelectors.length > 0,
-      healedSelectors,
-      analysis: parsed.analysis
-    };
+    return { success: healedSelectors.length > 0, healedSelectors, analysis: parsed.analysis };
   } catch (error) {
     console.error('AI healing error:', error);
-    return {
-      success: false,
-      healedSelectors: [],
-      analysis: `AI analysis failed: ${String(error)}`
-    };
+    return failResult(`AI analysis failed: ${String(error)}`);
   }
 }
 
