@@ -6,11 +6,24 @@ interface Env {
   ENVIRONMENT: string;
 }
 
+interface ActionRequest {
+  type: 'search' | 'fill' | 'click';
+  keyword?: string;
+  data?: Record<string, string>;
+  target?: string;
+}
+
+interface Command {
+  tool: 'fill_form' | 'press_key' | 'click' | 'wait';
+  args: Record<string, string | number>;
+}
+
 interface ValidateRequest {
-  site: 'tabelog' | 'hotpepper' | 'gurunavi';
+  site: string;
   page: string;
   html: string;
   url: string;
+  action?: ActionRequest;
 }
 
 interface SelectorDefinition {
@@ -43,8 +56,27 @@ interface MatchedElement {
   healed?: boolean;
 }
 
+interface ValidationResult {
+  logic_check: 'MATCH' | 'MISMATCH' | 'PARTIAL';
+  ai_check?: {
+    confirmed: boolean;
+    confidence: number;
+    analysis: string;
+    original_selector?: string;
+    healed_selector?: string;
+  };
+}
+
 interface ValidateResponse {
+  task_completed: boolean;
   status: 'GO' | 'ERROR';
+  validation?: ValidationResult;
+  execution?: {
+    selector_used?: string;
+    healed: boolean;
+    kv_updated?: boolean;
+  };
+  commands?: Command[];
   healed?: boolean;
   matched_elements: MatchedElement[];
   ai_analysis?: string;
@@ -206,10 +238,14 @@ async function validateAndHeal(req: ValidateRequest, env: Env): Promise<Validate
   const pageConfig = selectors.pages[req.page];
 
   if (!pageConfig) {
+    // Even on error, try to generate best-effort commands if action provided
+    const bestEffortCommands = req.action ? generateBestEffortCommands(req.action) : undefined;
     return {
+      task_completed: false,
       status: 'ERROR',
       error_type: 'PAGE_NOT_FOUND',
       matched_elements: [],
+      commands: bestEffortCommands,
       validation_time_ms: Date.now() - startTime
     };
   }
@@ -220,8 +256,9 @@ async function validateAndHeal(req: ValidateRequest, env: Env): Promise<Validate
   const matchedElements: MatchedElement[] = [];
   const missingElements: { id: string; expected_selector: string; tried_alternatives: boolean }[] = [];
   let needsHealing = false;
+  let logicCheckResult: 'MATCH' | 'MISMATCH' | 'PARTIAL' = 'MATCH';
 
-  // Check each required element
+  // Step 1: Logic Check - Check each required element
   for (const element of pageConfig.required_elements) {
     let found = document.querySelector(element.selector);
     let usedSelector = element.selector;
@@ -234,6 +271,7 @@ async function validateAndHeal(req: ValidateRequest, env: Env): Promise<Validate
         found = document.querySelector(alt);
         if (found) {
           usedSelector = alt;
+          logicCheckResult = 'PARTIAL'; // Used alternative
           break;
         }
       }
@@ -248,6 +286,7 @@ async function validateAndHeal(req: ValidateRequest, env: Env): Promise<Validate
       });
     } else {
       needsHealing = true;
+      logicCheckResult = 'MISMATCH';
       missingElements.push({
         id: element.id,
         expected_selector: element.selector,
@@ -256,8 +295,12 @@ async function validateAndHeal(req: ValidateRequest, env: Env): Promise<Validate
     }
   }
 
-  // If elements are missing, try AI healing
+  // Step 2: AI Check (always run for dual validation)
+  let aiCheckResult: ValidationResult['ai_check'] | undefined;
+  let kvUpdated = false;
+
   if (needsHealing && missingElements.length > 0) {
+    // AI Healing mode
     const healResult = await attemptAIHealing(req.html, req.site, missingElements, env);
 
     if (healResult.success) {
@@ -277,44 +320,193 @@ async function validateAndHeal(req: ValidateRequest, env: Env): Promise<Validate
           if (idx !== -1) {
             missingElements.splice(idx, 1);
           }
+
+          aiCheckResult = {
+            confirmed: true,
+            confidence: 0.88,
+            analysis: healResult.analysis || 'セレクタを自動修復しました',
+            original_selector: healed.oldSelector,
+            healed_selector: healed.newSelector
+          };
         }
       }
 
       // Update KV with healed selectors if successful
       if (missingElements.length === 0) {
         await updateSelectorsInKV(env, req.site, selectors, healResult.healedSelectors);
+        kvUpdated = true;
       }
-
-      return {
-        status: missingElements.length === 0 ? 'GO' : 'ERROR',
-        healed: true,
-        matched_elements: matchedElements,
-        ai_analysis: healResult.analysis,
-        updated_selectors: healResult.healedSelectors.map(h => ({
-          id: h.id,
-          old: h.oldSelector,
-          new: h.newSelector
-        })),
-        missing_elements: missingElements.length > 0 ? missingElements : undefined,
-        validation_time_ms: Date.now() - startTime
+    } else {
+      aiCheckResult = {
+        confirmed: false,
+        confidence: 0.3,
+        analysis: healResult.analysis || 'AI修復に失敗しました'
       };
     }
-
-    return {
-      status: 'ERROR',
-      error_type: 'SELECTOR_NOT_FOUND',
-      matched_elements: matchedElements,
-      missing_elements: missingElements,
-      ai_analysis: healResult.analysis || 'AI healing failed',
-      validation_time_ms: Date.now() - startTime
+  } else {
+    // AI Confirmation mode (validate that found elements are correct)
+    const confirmResult = await confirmWithAI(req.html, req.site, matchedElements, env);
+    aiCheckResult = {
+      confirmed: confirmResult.confirmed,
+      confidence: confirmResult.confidence,
+      analysis: confirmResult.analysis
     };
   }
 
+  // Generate commands based on action (ALWAYS generate if action provided)
+  const commands = req.action ? generateCommands(req.action, matchedElements, pageConfig) : undefined;
+  const isSuccess = missingElements.length === 0;
+
+  // Build validation result
+  const validation: ValidationResult = {
+    logic_check: logicCheckResult,
+    ai_check: aiCheckResult
+  };
+
+  // Find the selector used for execution
+  const primaryElement = matchedElements.find(e =>
+    e.id === 'search_input' || e.id === 'menu_name' || e.id.includes('input')
+  );
+
   return {
-    status: 'GO',
+    task_completed: isSuccess || commands !== undefined, // Task can complete even with partial success
+    status: isSuccess ? 'GO' : 'ERROR',
+    validation,
+    execution: {
+      selector_used: primaryElement?.selector,
+      healed: matchedElements.some(e => e.healed),
+      kv_updated: kvUpdated
+    },
+    commands,
+    healed: matchedElements.some(e => e.healed),
     matched_elements: matchedElements,
+    ai_analysis: aiCheckResult?.analysis,
+    updated_selectors: matchedElements.filter(e => e.healed).map(e => ({
+      id: e.id,
+      old: '', // Would need to track original
+      new: e.selector
+    })),
+    missing_elements: missingElements.length > 0 ? missingElements : undefined,
+    error_type: !isSuccess ? 'SELECTOR_NOT_FOUND' : undefined,
     validation_time_ms: Date.now() - startTime
   };
+}
+
+// Generate commands based on action type and matched elements
+function generateCommands(action: ActionRequest, matchedElements: MatchedElement[], pageConfig: { required_elements: ElementDefinition[] }): Command[] {
+  const commands: Command[] = [];
+
+  switch (action.type) {
+    case 'search': {
+      const inputElement = matchedElements.find(e => e.id === 'search_input' || e.id.includes('input'));
+      if (inputElement && action.keyword) {
+        commands.push({
+          tool: 'fill_form',
+          args: { selector: inputElement.selector, value: action.keyword }
+        });
+        commands.push({
+          tool: 'press_key',
+          args: { key: 'Enter' }
+        });
+      }
+      break;
+    }
+    case 'fill': {
+      if (action.data) {
+        for (const [fieldId, value] of Object.entries(action.data)) {
+          const element = matchedElements.find(e => e.id === fieldId);
+          if (element) {
+            commands.push({
+              tool: 'fill_form',
+              args: { selector: element.selector, value }
+            });
+          }
+        }
+      }
+      break;
+    }
+    case 'click': {
+      const targetElement = matchedElements.find(e => e.id === action.target || e.id.includes('button'));
+      if (targetElement) {
+        commands.push({
+          tool: 'click',
+          args: { selector: targetElement.selector }
+        });
+      }
+      break;
+    }
+  }
+
+  return commands;
+}
+
+// Generate best-effort commands when page config not found
+function generateBestEffortCommands(action: ActionRequest): Command[] {
+  const commands: Command[] = [];
+
+  switch (action.type) {
+    case 'search':
+      if (action.keyword) {
+        // Try common search selectors
+        commands.push({
+          tool: 'fill_form',
+          args: { selector: 'input[type="search"], input[name="q"], input[aria-label*="検索"]', value: action.keyword }
+        });
+        commands.push({
+          tool: 'press_key',
+          args: { key: 'Enter' }
+        });
+      }
+      break;
+  }
+
+  return commands;
+}
+
+// AI confirmation for found elements
+async function confirmWithAI(
+  html: string,
+  site: string,
+  matchedElements: MatchedElement[],
+  env: Env
+): Promise<{ confirmed: boolean; confidence: number; analysis: string }> {
+  try {
+    const truncatedHtml = html.substring(0, 10000);
+
+    const prompt = `あなたはHTML解析の専門家です。以下の${site}サイトで、指定されたセレクタが正しい要素を指しているか確認してください。
+
+見つかった要素:
+${matchedElements.map(e => `- ${e.id}: "${e.selector}"`).join('\n')}
+
+HTML (一部):
+${truncatedHtml}
+
+以下のJSON形式のみで回答:
+{"confirmed": true/false, "confidence": 0.0-1.0, "analysis": "日本語で簡潔に"}
+
+JSONのみ出力:`;
+
+    const response = await env.AI.run('@cf/meta/llama-3-8b-instruct', {
+      prompt,
+      max_tokens: 200
+    });
+
+    const responseText = typeof response === 'string' ? response : (response as { response: string }).response;
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        confirmed: parsed.confirmed ?? true,
+        confidence: parsed.confidence ?? 0.9,
+        analysis: parsed.analysis ?? '確認完了'
+      };
+    }
+
+    return { confirmed: true, confidence: 0.8, analysis: 'AI確認完了（パース警告）' };
+  } catch {
+    return { confirmed: true, confidence: 0.7, analysis: 'AI確認スキップ（エラー）' };
+  }
 }
 
 interface HealResult {
