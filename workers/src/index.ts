@@ -75,6 +75,7 @@ interface ValidateResponse {
     selector_used?: string;
     healed: boolean;
     kv_updated?: boolean;
+    fallback_used?: boolean;
   };
   commands?: Command[];
   healed?: boolean;
@@ -354,7 +355,13 @@ async function validateAndHeal(req: ValidateRequest, env: Env): Promise<Validate
   }
 
   // Generate commands based on action (ALWAYS generate if action provided)
-  const commands = req.action ? generateCommands(req.action, matchedElements, pageConfig) : undefined;
+  let commands = req.action ? generateCommands(req.action, matchedElements, pageConfig) : undefined;
+
+  // Fallback: If no commands generated but action exists, use best-effort commands
+  if (req.action && (!commands || commands.length === 0)) {
+    commands = generateBestEffortCommands(req.action);
+  }
+
   const isSuccess = missingElements.length === 0;
 
   // Build validation result
@@ -368,19 +375,25 @@ async function validateAndHeal(req: ValidateRequest, env: Env): Promise<Validate
     e.id === 'search_input' || e.id === 'menu_name' || e.id.includes('input')
   );
 
+  // Determine if fallback was used
+  const usedFallback = commands && commands.length > 0 && matchedElements.length === 0;
+
   return {
-    task_completed: isSuccess || commands !== undefined, // Task can complete even with partial success
+    task_completed: commands !== undefined && commands.length > 0, // Task can complete if commands exist
     status: isSuccess ? 'GO' : 'ERROR',
     validation,
     execution: {
-      selector_used: primaryElement?.selector,
+      selector_used: primaryElement?.selector || (usedFallback ? 'best-effort-fallback' : undefined),
       healed: matchedElements.some(e => e.healed),
-      kv_updated: kvUpdated
+      kv_updated: kvUpdated,
+      fallback_used: usedFallback
     },
     commands,
     healed: matchedElements.some(e => e.healed),
     matched_elements: matchedElements,
-    ai_analysis: aiCheckResult?.analysis,
+    ai_analysis: usedFallback
+      ? `${aiCheckResult?.analysis || ''} (ベストエフォートフォールバックを使用)`
+      : aiCheckResult?.analysis,
     updated_selectors: matchedElements.filter(e => e.healed).map(e => ({
       id: e.id,
       old: '', // Would need to track original

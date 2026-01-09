@@ -105,16 +105,47 @@ class CommandExecutor {
   }
 
   async fillForm(selector, value) {
-    const element = document.querySelector(selector);
+    // Try multiple selectors (comma-separated)
+    const selectors = selector.split(',').map(s => s.trim());
+    let element = null;
+
+    for (const sel of selectors) {
+      element = document.querySelector(sel);
+      if (element) break;
+    }
+
     if (!element) {
       throw new Error(`Element not found: ${selector}`);
     }
 
     element.focus();
-    element.value = value;
-    element.dispatchEvent(new Event('input', { bubbles: true }));
-    element.dispatchEvent(new Event('change', { bubbles: true }));
+    await this.sleep(100);
 
+    // Clear existing value
+    element.value = '';
+
+    // Use native input value setter for React/modern frameworks
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype, 'value'
+    )?.set;
+
+    if (nativeInputValueSetter) {
+      nativeInputValueSetter.call(element, value);
+    } else {
+      element.value = value;
+    }
+
+    // Dispatch multiple events for compatibility
+    element.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    element.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+    element.dispatchEvent(new InputEvent('input', {
+      bubbles: true,
+      cancelable: true,
+      inputType: 'insertText',
+      data: value
+    }));
+
+    await this.sleep(100);
     return { filled: value, selector };
   }
 
