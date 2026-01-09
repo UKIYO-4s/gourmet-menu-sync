@@ -457,30 +457,38 @@ async function runSelfHealingTest() {
     if (result.commands && result.commands.length > 0) {
       showHealingResult('info', '⏳ コマンドを実行中...');
 
-      // Inject command executor if needed
-      try {
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['content/command-executor.js']
-        });
-      } catch (e) {
-        console.log('Command executor already loaded or error:', e);
-      }
+      // Inject command executor and wait for it to be ready
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content/command-executor.js']
+      });
 
-      // Wait for script to load
-      await sleep(300);
+      // Wait for script to fully initialize
+      await sleep(500);
 
-      // Execute commands
-      for (const cmd of result.commands) {
-        try {
-          await chrome.tabs.sendMessage(tab.id, {
-            action: 'EXECUTE_SINGLE_COMMAND',
-            command: cmd
-          });
-          await sleep(200);
-        } catch (e) {
-          console.error('Command execution error:', e);
+      // Execute commands with retry on first command
+      for (let i = 0; i < result.commands.length; i++) {
+        const cmd = result.commands[i];
+        let retries = i === 0 ? 3 : 1; // First command gets more retries
+
+        while (retries > 0) {
+          try {
+            await chrome.tabs.sendMessage(tab.id, {
+              action: 'EXECUTE_SINGLE_COMMAND',
+              command: cmd
+            });
+            break; // Success, exit retry loop
+          } catch (e) {
+            retries--;
+            if (retries > 0) {
+              console.log(`Retrying command (${retries} left):`, cmd);
+              await sleep(300);
+            } else {
+              console.error('Command execution failed:', e);
+            }
+          }
         }
+        await sleep(200);
       }
 
       // Show final result
