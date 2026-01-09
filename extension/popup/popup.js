@@ -464,31 +464,34 @@ async function runSelfHealingTest() {
       });
 
       // Wait for script to fully initialize
-      await sleep(500);
+      await sleep(1000);
+      console.log('[Popup] Command executor injected, starting execution...');
 
       // Execute commands with retry on first command
       for (let i = 0; i < result.commands.length; i++) {
         const cmd = result.commands[i];
         let retries = i === 0 ? 3 : 1; // First command gets more retries
+        console.log(`[Popup] Executing command ${i + 1}/${result.commands.length}:`, cmd.tool);
 
         while (retries > 0) {
           try {
-            await chrome.tabs.sendMessage(tab.id, {
+            const response = await chrome.tabs.sendMessage(tab.id, {
               action: 'EXECUTE_SINGLE_COMMAND',
               command: cmd
             });
+            console.log(`[Popup] Command ${cmd.tool} result:`, response);
             break; // Success, exit retry loop
           } catch (e) {
             retries--;
             if (retries > 0) {
-              console.log(`Retrying command (${retries} left):`, cmd);
-              await sleep(300);
+              console.log(`[Popup] Retrying command (${retries} left):`, cmd);
+              await sleep(500);
             } else {
-              console.error('Command execution failed:', e);
+              console.error('[Popup] Command execution failed:', e);
             }
           }
         }
-        await sleep(200);
+        await sleep(300);
       }
 
       // Show final result
