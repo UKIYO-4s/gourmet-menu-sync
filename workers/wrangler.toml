@@ -1,0 +1,21 @@
+name = "gourmet-selector-validator"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# KV namespace for storing selectors
+[[kv_namespaces]]
+binding = "SELECTORS"
+id = "afc67365559b4a2787d48f7a262bd724"
+
+# Workers AI binding
+[ai]
+binding = "AI"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "production"
+
+# Development settings
+[dev]
+port = 8787
+local_protocol = "http"

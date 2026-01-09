@@ -1,0 +1,25 @@
+{
+  "name": "gourmet-selector-validator",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": ["cloudflare-workers", "ai", "selector-healing"],
+  "author": "",
+  "license": "UNLICENSED",
+  "private": true,
+  "description": "Cloudflare Workers API for selector validation and self-healing",
+  "dependencies": {
+    "linkedom": "^0.18.12"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260109.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.58.0"
+  }
+}
