@@ -1,0 +1,26 @@
+{
+  "version": "2025-01-09",
+  "site": "hotpepper",
+  "displayName": "ホットペッパーグルメ",
+  "baseUrl": "https://restaurant.hotpepper.jp",
+  "pages": {
+    "menu_list": {
+      "url_pattern": "restaurant.hotpepper.jp/.*/menu/?$",
+      "description": "メニュー一覧ページ",
+      "required_elements": [],
+      "page_indicators": []
+    },
+    "menu_edit": {
+      "url_pattern": "restaurant.hotpepper.jp/.*/menu/edit/.*",
+      "description": "メニュー編集ページ",
+      "required_elements": [],
+      "page_indicators": []
+    },
+    "menu_add": {
+      "url_pattern": "restaurant.hotpepper.jp/.*/menu/add.*",
+      "description": "メニュー追加ページ",
+      "required_elements": [],
+      "page_indicators": []
+    }
+  }
+}

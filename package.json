@@ -1,0 +1,23 @@
+{
+  "name": "gourmet-menu-sync",
+  "version": "0.1.0",
+  "description": "Chrome extension for syncing menu data across gourmet sites (Tabelog, HotPepper, Gurunavi)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext ts,tsx",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "chrome-extension",
+    "tabelog",
+    "hotpepper",
+    "gurunavi",
+    "menu-sync"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "private": true
+}

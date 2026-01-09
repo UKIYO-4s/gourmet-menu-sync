@@ -1,0 +1,26 @@
+{
+  "version": "2025-01-09",
+  "site": "gurunavi",
+  "displayName": "ぐるなび",
+  "baseUrl": "https://pro.gnavi.co.jp",
+  "pages": {
+    "menu_list": {
+      "url_pattern": "pro.gnavi.co.jp/.*/menu/?$",
+      "description": "メニュー一覧ページ",
+      "required_elements": [],
+      "page_indicators": []
+    },
+    "menu_edit": {
+      "url_pattern": "pro.gnavi.co.jp/.*/menu/edit/.*",
+      "description": "メニュー編集ページ",
+      "required_elements": [],
+      "page_indicators": []
+    },
+    "menu_add": {
+      "url_pattern": "pro.gnavi.co.jp/.*/menu/add.*",
+      "description": "メニュー追加ページ",
+      "required_elements": [],
+      "page_indicators": []
+    }
+  }
+}

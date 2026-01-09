@@ -1,0 +1,26 @@
+{
+  "version": "2025-01-09",
+  "site": "tabelog",
+  "displayName": "食べログ",
+  "baseUrl": "https://owner.tabelog.com",
+  "pages": {
+    "menu_list": {
+      "url_pattern": "owner.tabelog.com/.*/menu/?$",
+      "description": "メニュー一覧ページ",
+      "required_elements": [],
+      "page_indicators": []
+    },
+    "menu_edit": {
+      "url_pattern": "owner.tabelog.com/.*/menu/edit/.*",
+      "description": "メニュー編集ページ",
+      "required_elements": [],
+      "page_indicators": []
+    },
+    "menu_add": {
+      "url_pattern": "owner.tabelog.com/.*/menu/add.*",
+      "description": "メニュー追加ページ",
+      "required_elements": [],
+      "page_indicators": []
+    }
+  }
+}
