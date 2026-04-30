@@ -59,7 +59,7 @@
 - [x] CSVインポート仕様 → `docs/12_csv-import-design.md`
 - [x] 自社DB正本フローの詳細化 → `docs/13_internal-menu-admin-design.md`
 - [x] 管理画面MVP設計 → `docs/13_internal-menu-admin-design.md`
-- [ ] API MVP設計
+- [x] API MVP設計 → `docs/14_api-mvp-design.md`
 - [ ] `schema-draft.sql` と `docs/03_database-design.md` の整合性更新
 
 ---
