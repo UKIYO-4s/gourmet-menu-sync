@@ -313,6 +313,7 @@
     "click_save",
     "click_publish",
     "click_delete",
+    "delete_item",
     "form_submit",
     "press_enter_to_submit",
     "store_credentials",
