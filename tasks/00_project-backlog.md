@@ -57,8 +57,8 @@
 
 - [x] Common Menu Model の詳細設計 → `docs/11_common-menu-model.md`
 - [x] CSVインポート仕様 → `docs/12_csv-import-design.md`
-- [ ] 自社DB正本フローの詳細化
-- [ ] 管理画面MVP設計
+- [x] 自社DB正本フローの詳細化 → `docs/13_internal-menu-admin-design.md`
+- [x] 管理画面MVP設計 → `docs/13_internal-menu-admin-design.md`
 - [ ] API MVP設計
 - [ ] `schema-draft.sql` と `docs/03_database-design.md` の整合性更新
 
