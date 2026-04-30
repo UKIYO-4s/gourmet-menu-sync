@@ -121,6 +121,22 @@
 
 ---
 
+## D1 Migration 着手前ブロッカー（`docs/24` 連動）
+
+- [x] API 層サニタイザ責務定義（`docs/25_api-sanitizer-policy.md` 起票済み）
+- [x] `wrangler.toml` への `migrations_dir` 追記検証（Wrangler 4.86.0 で確認済み、2026-04-30）
+- [x] 保存期間パージ運用方式の確定（Scheduled Worker 仮採用 → `decisions/adr-007-retention-purge-policy.md`、2026-04-30）
+- [x] **`0001_init.sql` 着手 GO**（2026-04-30 ブロッカー全解消）
+- [x] `database/migrations/0001_init.sql` 作成（20 テーブル / 26 index、ローカル D1 apply 成功、2026-04-30）
+- [x] `0001_init.sql` と `docs/03` の差分を正式反映（`menu_items.status` / `category_mappings.status` / `sync_jobs.menu_item_version_id` / `mapping_snapshot_json` / CHECK 制約整理、2026-04-30）
+- [x] `docs/03` を正とする `0001_init.sql` 自己レビュー実施（対象6テーブル差分ゼロ、ローカル apply 再現性確認済、2026-04-30）
+- [x] `audit_logs.action` 正規値に `sanitizer_rejected` / `retention_purge_executed` 追加（`docs/09 §8`、2026-04-30）
+- [ ] `audit_logs.action` 許可値リストの実装場所最終決定（`packages/shared` TS const / union 第一候補）
+- [ ] D1 実 `database_id` 発行と placeholder 置換（`docs/24 §14`）
+- [ ] リモート D1 への migration apply（実 `database_id` 発行後）
+
+---
+
 ## オープン論点（要意思決定）
 
 - [ ] DB選定（D1 / PostgreSQL / MySQL）
