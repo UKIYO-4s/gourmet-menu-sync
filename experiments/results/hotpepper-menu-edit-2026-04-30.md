@@ -250,27 +250,27 @@ field_hash / page_hash の安定性:
 `experiments/phase1-dom-detection-checklist.md` 21章。
 
 - [ ] **GO** — 成功条件すべて満たす（plan 13章）。Chrome拡張MVP着手可
-- [ ] **HOLD** — 一部 NG（match_score 校正待ち / hash 不安定 等）。再検証
+- [x] **HOLD** — 一部 NG（match_score 校正待ち / hash 不安定 等）。再検証
 - [ ] **STOP** — 失敗条件のいずれかに該当（plan 14章）。設計差し戻し
 - [ ] **SECURITY-STOP** — 禁止情報の漏洩 / 規約抵触の懸念。即時中断
 
 判定理由:
 
 ```
-判定:
-理由:
-影響:
-次タスク:
-関連ファイル:
+判定: HOLD
+理由: Hotpepperなど外部グルメサイトの実画面解析はクライアント確認待ちのため、一旦後回しにする。
+影響: Phase 1.5 の実画面DOM検証、mapping sample の実観察値反映、GO判定は未実施。Chrome拡張MVP実装には進まない。
+次タスク: 外部サイト非依存の設計タスク（Common Menu Model、CSVインポート、自社DB正本フロー、管理画面MVP、API MVP、DB設計整合性更新）を進める。
+関連ファイル: tasks/00_project-backlog.md, devlog/2026-04-30.md
 ```
 
 ---
 
 ## 14. 次アクション
 
-- [ ]
-- [ ]
-- [ ]
+- [ ] クライアント確認後に Hotpepper 実画面検証を再開
+- [ ] 実画面値は店舗名・電話番号・住所・担当者名を仮名化して記録
+- [ ] 外部サイト非依存の設計タスクを先行
 
 ---
 
@@ -281,3 +281,7 @@ field_hash / page_hash の安定性:
 ---
 
 ## 16. 備考 / 気付き
+
+- 2026-04-30 時点では実画面検証未実施。
+- 保存・公開・削除操作は未実施。
+- 認証情報、Cookie、Session、Token、生DOM、input value は未取得。

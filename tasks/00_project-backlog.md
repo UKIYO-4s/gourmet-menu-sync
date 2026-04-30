@@ -26,7 +26,14 @@
 
 ---
 
-## Phase 1.5: Hotpepper 実画面検証（次にやる）
+## Phase 1.5: Hotpepper 実画面検証（HOLD: クライアント確認待ち）
+
+状態:
+
+- [x] **HOLD** — Hotpepperなど外部グルメサイトの実画面解析はクライアント確認待ち
+- [x] 保存・公開・削除操作は未実施
+- [x] 認証情報 / Cookie / Session / Token / 生DOM / input value は未取得
+- [ ] クライアント確認後に実画面検証を再開
 
 - [x] 実画面検証結果ファイル作成 → `experiments/results/hotpepper-menu-edit-2026-04-30.md`
 - [x] 実画面検証前の Hotpepper mapping baseline 復旧 → `configs/mapping-samples/hotpepper-menu-edit.sample.json`
@@ -43,6 +50,17 @@
 - [ ] 検証結果を踏まえた **docs/04 / docs/05 の整合性更新**
 - [ ] 検証結果を踏まえた **docs/03_database-design.md の更新**（field_hash / page_hash / identity 5項目の保存粒度）
 - [ ] GO/HOLD/STOP 判定（チェックリスト 21 章）→ Phase 2 へ進む可否を確定
+
+---
+
+## Phase 1.6: 外部サイト非依存の設計タスク（次に進める）
+
+- [ ] Common Menu Model の詳細設計
+- [ ] CSVインポート仕様
+- [ ] 自社DB正本フローの詳細化
+- [ ] 管理画面MVP設計
+- [ ] API MVP設計
+- [ ] `schema-draft.sql` と `docs/03_database-design.md` の整合性更新
 
 ---
 
