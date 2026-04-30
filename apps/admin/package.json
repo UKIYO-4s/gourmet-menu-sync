@@ -1,0 +1,27 @@
+{
+  "name": "@menusync/admin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "typecheck": "astro check",
+    "lint": "astro check",
+    "format": "prettier --check .",
+    "test": "pnpm typecheck"
+  },
+  "dependencies": {
+    "@astrojs/react": "^4.3.0",
+    "@menusync/shared": "workspace:*",
+    "astro": "^5.16.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "typescript": "^5.9.3"
+  }
+}

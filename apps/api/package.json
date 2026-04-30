@@ -1,0 +1,25 @@
+{
+  "name": "@menusync/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "WRANGLER_LOG_PATH=../../.wrangler-logs wrangler deploy --dry-run",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "format": "prettier --check .",
+    "test": "pnpm typecheck",
+    "db:migrate": "wrangler d1 migrations apply menu-sync-local --local",
+    "db:seed": "echo \"No seed data is defined for Phase 0\""
+  },
+  "dependencies": {
+    "@menusync/shared": "workspace:*",
+    "hono": "^4.10.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251025.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.42.0"
+  }
+}

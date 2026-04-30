@@ -1,0 +1,19 @@
+{
+  "name": "@menusync/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "tsconfig.base.json",
+    "tsconfig.astro.json",
+    "tsconfig.worker.json"
+  ],
+  "scripts": {
+    "dev": "echo \"No dev command for shared config\"",
+    "build": "echo \"No build command for shared config\"",
+    "typecheck": "echo \"No typecheck command for shared config\"",
+    "lint": "echo \"No lint command for shared config\"",
+    "format": "prettier --check .",
+    "test": "echo \"No tests for shared config\""
+  }
+}
