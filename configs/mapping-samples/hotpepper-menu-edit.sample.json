@@ -1,0 +1,333 @@
+{
+  "site": "hotpepper",
+  "page": "menu_edit",
+  "mapping_version": "2026.04.30-001",
+  "version": "2026.04.30-001",
+  "status": "published",
+  "required_extension_version": "0.1.0",
+  "notes": [
+    "Phase 1.5 baseline sample restored before real Hotpepper screen verification.",
+    "Selectors and URL patterns are provisional because the real DOM has not been verified.",
+    "Do not store login information, cookies, sessions, tokens, raw DOM, hidden values, or input values."
+  ],
+  "target_url_patterns": [
+    {
+      "pattern": "https://*/**/menu*/**",
+      "kind": "provisional",
+      "confidence": 0.2,
+      "notes": "Placeholder pattern. Replace after masked URL pattern is observed in Phase 1.5."
+    }
+  ],
+  "store_identity": {
+    "required": true,
+    "min_required_signals": 4,
+    "min_match_score": 0.85,
+    "stop_if_mismatch": true,
+    "signals": {
+      "store_name": {
+        "required": true,
+        "labels": ["店舗名", "店名"],
+        "selector_hints": [],
+        "nearby_text": ["店舗", "掲載店舗"],
+        "kind": "provisional",
+        "confidence": 0.3
+      },
+      "phone": {
+        "required": true,
+        "labels": ["電話番号", "TEL"],
+        "selector_hints": [],
+        "nearby_text": ["電話", "TEL"],
+        "kind": "provisional",
+        "confidence": 0.3
+      },
+      "address": {
+        "required": true,
+        "labels": ["住所", "所在地"],
+        "selector_hints": [],
+        "nearby_text": ["住所", "所在地"],
+        "kind": "provisional",
+        "confidence": 0.3
+      },
+      "admin_url_store_id": {
+        "required": false,
+        "source": "url_pattern",
+        "labels": [],
+        "selector_hints": [],
+        "kind": "provisional",
+        "confidence": 0.2
+      },
+      "external_store_id": {
+        "required": false,
+        "labels": ["店舗ID", "掲載ID"],
+        "selector_hints": [],
+        "nearby_text": ["店舗ID", "掲載ID"],
+        "kind": "provisional",
+        "confidence": 0.2
+      }
+    }
+  },
+  "fields": {
+    "name": {
+      "source": "common.name",
+      "target_key": "menu_name",
+      "required": true,
+      "type": "text",
+      "labels": ["メニュー名", "商品名", "料理名"],
+      "placeholders": ["メニュー名を入力", "料理名を入力", "商品名を入力"],
+      "selector_hints": [
+        {
+          "selector": "input[name*='menu']",
+          "kind": "provisional",
+          "confidence": 0.45
+        },
+        {
+          "selector": "input[name*='name']",
+          "kind": "provisional",
+          "confidence": 0.35
+        }
+      ],
+      "nearby_text": ["メニュー名", "商品名", "料理名", "必須"],
+      "attributes": {
+        "type": "text"
+      },
+      "min_match_score": 0.8,
+      "minMatchScore": 0.8
+    },
+    "price": {
+      "source": "common.price",
+      "target_key": "price",
+      "required": true,
+      "type": "number_or_text",
+      "labels": ["価格", "金額", "税込", "税抜"],
+      "placeholders": ["例: 1200", "1200", "円"],
+      "selector_hints": [
+        {
+          "selector": "input[name*='price']",
+          "kind": "provisional",
+          "confidence": 0.45
+        },
+        {
+          "selector": "input[type='number']",
+          "kind": "provisional",
+          "confidence": 0.3
+        }
+      ],
+      "nearby_text": ["価格", "金額", "円", "税込", "税抜"],
+      "format": {
+        "type": "integer",
+        "currency": "JPY",
+        "allow_thousands_separator": false,
+        "suffix": ""
+      },
+      "min_match_score": 0.85,
+      "minMatchScore": 0.85
+    },
+    "category": {
+      "source": "common.category",
+      "target_key": "category",
+      "required": true,
+      "type": "select_or_choice",
+      "labels": ["カテゴリ", "カテゴリー", "ジャンル", "分類"],
+      "placeholders": [],
+      "selector_hints": [
+        {
+          "selector": "select[name*='category']",
+          "kind": "provisional",
+          "confidence": 0.4
+        },
+        {
+          "selector": "select[name*='genre']",
+          "kind": "provisional",
+          "confidence": 0.35
+        }
+      ],
+      "nearby_text": ["カテゴリ", "カテゴリー", "ジャンル", "分類"],
+      "use_store_category_mapping": true,
+      "useStoreCategoryMapping": true,
+      "option_capture_policy": "labels_only_no_values",
+      "stop_if_unmapped": true,
+      "min_match_score": 0.8,
+      "minMatchScore": 0.8
+    },
+    "description": {
+      "source": "common.description",
+      "target_key": "description",
+      "required": false,
+      "type": "textarea_or_text",
+      "labels": ["説明", "紹介文", "PR文", "コメント", "メニュー説明"],
+      "placeholders": ["商品の説明", "説明を入力", "紹介文を入力"],
+      "selector_hints": [
+        {
+          "selector": "textarea[name*='desc']",
+          "kind": "provisional",
+          "confidence": 0.35
+        },
+        {
+          "selector": "textarea[name*='comment']",
+          "kind": "provisional",
+          "confidence": 0.3
+        }
+      ],
+      "nearby_text": ["説明", "紹介文", "PR", "コメント"],
+      "min_match_score": 0.7,
+      "minMatchScore": 0.7
+    },
+    "status": {
+      "source": "common.status",
+      "target_key": "status",
+      "required": false,
+      "type": "select_or_choice",
+      "labels": ["公開状態", "掲載状態", "ステータス"],
+      "selector_hints": [],
+      "nearby_text": ["公開", "掲載中", "非公開", "下書き", "販売終了"],
+      "value_policy": {
+        "enabled": "published_or_visible",
+        "hidden": "private_or_hidden",
+        "deleted": "never_auto_select"
+      },
+      "kind": "provisional",
+      "confidence": 0.2,
+      "min_match_score": 0.7,
+      "minMatchScore": 0.7
+    },
+    "sale_start_date": {
+      "source": "common.sale_start_date",
+      "target_key": "sale_start_date",
+      "required": false,
+      "type": "date",
+      "labels": ["販売開始日", "掲載開始日", "開始日"],
+      "selector_hints": [],
+      "nearby_text": ["販売開始", "掲載開始", "開始日"],
+      "format": ["YYYY-MM-DD", "YYYY/MM/DD"],
+      "kind": "provisional",
+      "confidence": 0.2,
+      "min_match_score": 0.7,
+      "minMatchScore": 0.7
+    },
+    "sale_end_date": {
+      "source": "common.sale_end_date",
+      "target_key": "sale_end_date",
+      "required": false,
+      "type": "date",
+      "labels": ["販売終了日", "掲載終了日", "終了日"],
+      "selector_hints": [],
+      "nearby_text": ["販売終了", "掲載終了", "終了日"],
+      "format": ["YYYY-MM-DD", "YYYY/MM/DD"],
+      "kind": "provisional",
+      "confidence": 0.2,
+      "min_match_score": 0.7,
+      "minMatchScore": 0.7
+    }
+  },
+  "buttons": {
+    "save": {
+      "texts": ["保存", "変更を保存", "更新する", "登録する"],
+      "selector_hints": [],
+      "autoClick": false,
+      "auto_click": false,
+      "danger": false,
+      "prohibited_action": true
+    },
+    "publish": {
+      "texts": ["公開", "公開申請", "掲載する", "反映する"],
+      "selector_hints": [],
+      "autoClick": false,
+      "auto_click": false,
+      "danger": true,
+      "prohibited_action": true
+    },
+    "draft_save": {
+      "texts": ["下書き保存", "一時保存"],
+      "selector_hints": [],
+      "autoClick": false,
+      "auto_click": false,
+      "danger": true,
+      "prohibited_action": true
+    },
+    "delete": {
+      "texts": ["削除", "削除する"],
+      "selector_hints": [],
+      "autoClick": false,
+      "auto_click": false,
+      "danger": true,
+      "prohibited_action": true
+    },
+    "cancel": {
+      "texts": ["キャンセル", "戻る"],
+      "selector_hints": [],
+      "autoClick": false,
+      "auto_click": false,
+      "danger": false,
+      "prohibited_action": false
+    }
+  },
+  "safety": {
+    "autoSubmit": false,
+    "auto_submit_enabled": false,
+    "stopIfDomChanged": true,
+    "stop_if_dom_changed": true,
+    "stopIfRequiredFieldMissing": true,
+    "stop_if_required_field_missing": true,
+    "stopIfStoreIdentityMismatch": true,
+    "stop_if_store_identity_mismatch": true,
+    "stopIfUnmappedCategory": true,
+    "stop_if_unmapped_category": true,
+    "minPageMatchScore": 0.75,
+    "min_page_match_score": 0.75,
+    "ambiguous_score_delta_threshold": 0.05,
+    "required_fields": ["name", "price", "category"],
+    "prohibited_data": [
+      "login_id",
+      "password",
+      "cookie",
+      "session",
+      "token",
+      "csrf_token",
+      "authorization_header",
+      "input_value",
+      "hidden_value",
+      "raw_dom",
+      "outer_html",
+      "local_storage",
+      "indexed_db"
+    ]
+  },
+  "dom_diff_policy": {
+    "field_removed": "critical",
+    "required_field_missing": "critical",
+    "selector_changed_required_field": "critical",
+    "button_changed_save_or_publish": "critical",
+    "layout_changed": "critical",
+    "store_identity_missing": "critical",
+    "label_changed": "warning",
+    "placeholder_changed": "warning",
+    "optional_field_added_or_removed": "warning"
+  },
+  "submit": {
+    "autoSubmit": false,
+    "auto_submit_enabled": false,
+    "allow_form_submit": false,
+    "allow_button_click": false
+  },
+  "prohibited_actions": [
+    "click_save",
+    "click_publish",
+    "click_delete",
+    "form_submit",
+    "press_enter_to_submit",
+    "store_credentials",
+    "read_or_store_cookie",
+    "read_or_store_session",
+    "read_or_store_token",
+    "store_input_value",
+    "store_hidden_value",
+    "dump_raw_dom"
+  ],
+  "todo": [
+    "Replace provisional URL pattern after masked Hotpepper menu edit URL is observed.",
+    "Replace provisional selector hints after real labels/placeholders/name/id are verified.",
+    "Calibrate min_match_score values from Phase 1.5 observation.",
+    "Confirm whether status and sale date fields exist on the target screen.",
+    "Confirm whether the screen type is detail_page, modal, or inline_edit."
+  ]
+}
