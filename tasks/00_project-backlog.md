@@ -56,7 +56,7 @@
 ## Phase 1.6: 外部サイト非依存の設計タスク（次に進める）
 
 - [x] Common Menu Model の詳細設計 → `docs/11_common-menu-model.md`
-- [ ] CSVインポート仕様
+- [x] CSVインポート仕様 → `docs/12_csv-import-design.md`
 - [ ] 自社DB正本フローの詳細化
 - [ ] 管理画面MVP設計
 - [ ] API MVP設計
