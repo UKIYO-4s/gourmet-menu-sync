@@ -14,7 +14,7 @@
 - [x] ER図メモ作成 → `database/erd-notes.md`
 - [x] Phase1 DOM検出 検証計画 → `experiments/phase1-dom-detection-plan.md`
 - [x] 空ファイル復旧（2026-04-30）→ `database/schema-draft.sql` / `database/erd-notes.md` / `configs/mapping-samples/hotpepper-menu-edit.sample.json`
-- [ ] Common Menu Model の正式定義（型・必須）→ `docs/01_system-overview.md`
+- [ ] Common Menu Model の正式定義（型・必須）→ `docs/01_system-overview.md` / `docs/11_common-menu-model.md`
 - [ ] DBスキーマ確定（インデックス / FK / JSON 戦略）→ `database/schema-draft.sql` + `docs/03_database-design.md`
 - [ ] Chrome拡張の権限・モジュール設計確定 → `docs/04_chrome-extension-design.md`
 - [ ] mapping JSON 仕様確定 → `docs/05_mapping-json-design.md`
@@ -55,7 +55,7 @@
 
 ## Phase 1.6: 外部サイト非依存の設計タスク（次に進める）
 
-- [ ] Common Menu Model の詳細設計
+- [x] Common Menu Model の詳細設計 → `docs/11_common-menu-model.md`
 - [ ] CSVインポート仕様
 - [ ] 自社DB正本フローの詳細化
 - [ ] 管理画面MVP設計
